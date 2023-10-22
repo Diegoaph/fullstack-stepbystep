@@ -441,15 +441,21 @@ las variables de entorno o enviroment variables, las guardaremos en un archivo c
 > API_KEY=1c2a137230ce510497693405f5f9f015  
 > PORT=3001
 
-se pueden agregar mas variables de entorno segun las necesidades del proyecto, pero esencialmente usaremos estas.
+se pueden agregar mas variables de entorno  
+segun las necesidades del proyecto,  
+pero esencialmente usaremos estas.
 
-> es buena idea separar dbhost y dbport ya que al desplegar el backend, serán solicitadas separadas.
+es buena idea separar dbhost y dbport  
+ya que al desplegar el backend  
+serán solicitadas separadas.
 
-es recomendable que a la misma altura del archivo .env, tengamos un archivo **.gitignore** en el cual tendremos una linea **.env** para asegurarnos de que el archivo no se subirá a github
+es recomendable que a la misma altura del archivo .env,  
+tengamos un archivo **.gitignore** en el cual tendremos una linea  
+**.env** para asegurarnos de que el archivo no se subirá a github
 
 ### Modelos
 
-debemos crear un archivo .js para cada tabla de nustra base de datos, estos archivos se llaman modelos y se alojarán en "/src/models/".
+son archivos .js que definen como se creará cada tabla de nuestra base de datos, los ubicaremos en "/src/models/".
 
 Es recomendable que al crear un modelo (por ejemplo el de la tabla de usuarios), nombrarlo User.js ó Usuario.js en _singular_ debido a que sequelize crea la tabla y las referencias en plural, y las referencias a cada elemento de la tabla, será tal cual el nombre de la tabla:
 
@@ -461,57 +467,59 @@ ahora, aprendamos a construir un modelo y conectarnos a la base de datos mediant
 
 ### conexión del servidor a la DB
 
-**db.js**  
-este módulo, se encargará de:
+el módulo **db.js** es el encargado de establecer comunicacion entre nuestra app de express, y postgres, con este módulo lograremos tres objetivos esenciales:
 
-1. crear la conexion con la base de datos.
-2. definir los modelos.
-3. definir las relaciones entre los modelos.
+> 1. crear la conexion de express con la base de datos.
+> 2. definir los modelos.
+> 3. definir las relaciones entre los modelos.
 
-para ello, debemos, importar sequelize, para ello consultaremos la [Documentacion de Sequelize](sequelize.org/docs/v6/getting-started/), ahi encontraremos
+#### 1. crear la conexion de express con la base de datos
 
-> -   cómo se importa sequelize.
-> -   métodos y funciones útiles de sequelize.
+para lograrlo, debemos importar sequelize,  
+consultando la [Documentacion de Sequelize](sequelize.org/docs/v6/getting-started/), ahi encontramos:
 
-ahí encontramos que se importa con la línea:
+> -   cómo se importa sequelize - métodos y funciones útiles de sequelize.
+
+la sintaxis para importar sequelize es desestructurado y con inicial mayuscula:
 
 ```js
 const { Sequelize } = require("sequelize");
 ```
 
-La documentacion de sequelize nos da tres opciones para conectar nuestra base de datos, usaremos la siguiente:
+Una de las opciones que la documentacion nos ofrece para establecer la conexión es  
+instanciando a sequelize pasandole los siguientes datos con formato:
 
 ```js
 const sequelize = new Sequelize("postgres://user:pass@example.com:5432/dbname");
 ```
 
-editando los valores correspondientes para nuestro caso, haciendo uso de nuestro archivo .env para no exponer datos sensibles en el código que publicaremos en github, quedando algo similar a:
+editando los valores correspondientes para nuestro caso, haciendo uso de nuestro archivo .env para no exponer datos sensibles, quedando algo similar a:
 
 ```js
 require("dotenv").config();
 const { Sequelize } = require("sequelize");
 const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT } = process.env;
-
 const sequelize = new Sequelize(
     `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`
 );
 ```
 
-es recomendable agregar { logging: false } como segundo parametro al instanciar nuestro sequelize, para evitar exceso de informacion en la consola.
+> es recomendable agregar { logging: false } como segundo parametro al instanciar nuestro sequelize, para evitar exceso de informacion en la consola.
+>
+> ```js
+> require("dotenv").config();
+> const { Sequelize } = require("sequelize");
+> const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT } = process.env;
+> const sequelize = new Sequelize(
+>     `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`,
+>     { logging: false }
+> );
+> ```
 
-```js
-require("dotenv").config();
-const { Sequelize } = require("sequelize");
-const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT } = process.env;
+hecho esto, debemos ir a nuestro index.js en la carpeta raíz, y agregar la sincronizacion de sequelize entre nuestro servidor de express y la base de datos, Aagregando sequelize.sync() en la callback de app.listen, preferiblemente antes del console.log "server listening". El método sync, recibe el parámetro { force: true } cuando estamos desarrollando la API, Force true _borra_ la base de datos y la vuelve a crear con los datos nuevos cada vez que hacemos reiniciamos el servidor. Cuando ya tengamos nuestro diseño y estructura hechos, cambiamos a { alter: true } el cual en lugar de _borrar_ toda la base de datos y hacerla de nuevo, simplemente actualiza lo necesario en cada sesión.
 
-const sequelize = new Sequelize(
-    `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`,
-    { logging: false }
-);
-```
-
-> hecho esto, deberiamos ir a nuestro index.js en la carpeta raíz, y agregar la sincorinizacion de sequelize entre nuestro servidor de express y la base de datos, y esto lo logramos agregando sequelize.sync() en la callback de app.listen, preferiblemente antes del console.log "server listening". El método sync, recibe el parámetro { force: true } cuando estamos desarrollando la API, ay que force true cada vez que hacemos cambios _borra_ la base de datos y la vuelve a crear con los datos nuevos. Ahora, cuando ya tenemos nuestro diseño y estructura hechos, cambiamos a { alter: true } el cual en lugar de _borrar_ toda la base de datos y hacerla de nuevo, simplemente actualiza lo necesario en cada sesión.
-
+> /index.js
+>
 > ```js
 > const app = require(".src/app");
 > app.listen(3001, () => {
@@ -527,45 +535,11 @@ const sequelize = new Sequelize(
 > });
 > ```
 
-**hemos creado y sincronizado nuestra base de datos**
-ahora que nuestro servidor de express reconoce tener una base de datos asociada, importaremos en db.js cada una de las funciones que definen cada uno de los modelos que están en la carpeta "/src/models/" para que asi, db.js pueda definir los modelos que crearán cada tabla dentro de la base de datos.
+#### 2. definir los modelos
 
-Al definir modelos, debemos darle a nuestra instancia de sequelize el nombre de la tabla, y cada uno de los campos o caracteristicas que tendrá cada elemento de esa tabla, _por ejemplo_, un usuario tendria nombre, apellido, numero de documento, eMail, y también la daremos un numero de identificacion único en nuestra base de datos, y a cada una de estas caracteristicas debemos especificarle que tipo de dato es, y que restricciones ó _constraints_ debe tener, por ejemplo, si un campo es obligaorio u opcional, o si debe tener un formato particular, estos tipos de dato, vienen definidos por sequelize en un objeto llamado **DataTypes, el cual debe ser importado desestructurado desde sequelize**
-
-para definir, _por ejemplo_ el modelo de la tabla de usuarios:
-
-```js
-const { DataTypes } = require("sequelize");
-
-sequelize.define(
-    "User",
-    {
-        id: {
-            type: DataTypes.UUID, //definimos que el id es de tipo universal unique id
-            defaultValue: DataTypes.UUIDV4, // como constraint, le decimos que se debe generar automaticamente este id, (puede ser v4, v5 etc, no cambia mucho)
-            primaryKey: true, // al ser un id, es necesario que sea un primary key, si no lo definimos como tal, surgirian problemas, a demás, el hecho de ser primary key, indica que es unico, que es obligatorio y otros constraints implícitos
-        },
-        name: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-        email: {
-            type: Datatypes.STRING,
-            unique: true,
-        },
-        phone: {
-            type: Datatypes.STRING,
-            allowNull: false,
-        },
-    },
-    { timestamps: false }
-);
-```
-
-aqui hemos definido la tabla de usuarios y el contenido que debe tener cada usuario segun nuestro criterio, _no es una fórmula fija_, es decir en cada proyecto podremos decidir si permitiremos que dos usuarios compartan el mismo email y en consecuancia le pondremos o no el constraint unique, ó si permitiremos que se deje el campo de email vacío, eso es a discreción del desarrollador y del proyecto.  
-por último en la tabla, le damos la instruccion de timestamps false, ya que por defecto se crea un registro de fecha y hora en la que ha sido creado cada elemento de cada tabla, y por el momento, no deseamos ver tanta información en nuestra base de datos.
-
-este modelo, lo encontraremos en "/src/models/**User,js**", pero debemos recordar, que lo que necesitamos es una funcion que cree un elemento bajo ese esquema, cada vez que se requiera, por lo tanto la estructura del archivo User.js es:
+Ahora que nuestro servidor de express reconoce tener una base de datos asociada, importaremos cada una de las funciones que definen los modelos de "/src/models/" en db.js, para que pueda definir los modelos que crearán cada tabla de la base de datos.
+Al definir modelos, debemos darle a nuestra instancia de sequelize el nombre de la tabla, y cada uno de los campos o caracteristicas que tendrá cada elemento de esa tabla, _por ejemplo_, un usuario tendria nombre, apellido, numero de documento, eMail, y también la daremos un numero de identificacion único en nuestra base de datos.  
+A demás, cada una de estas caracteristicas debe tener especificado que tipo de dato es, y que restricciones (_constraints_) debe tener, por ejemplo, si un campo es obligaorio u opcional, estos tipos de dato, vienen definidos por sequelize en un objeto llamado **DataTypes, el cual debe ser importado desestructurado desde sequelize**
 
 ```js
 const { DataTypes } = require("sequelize");
@@ -574,14 +548,33 @@ module.exports = (sequelize) => {
     sequelize.define(
         "User",
         {
-            // todos los campos y constraints
+            id: {
+                type: DataTypes.UUID, //definimos que el id es de tipo universal unique id
+                defaultValue: DataTypes.UUIDV4, // como constraint, le decimos que se debe generar automaticamente este id, (puede ser v4, v5 etc, no cambia mucho)
+                primaryKey: true, // al ser un id, es necesario que sea un primary key, si no lo definimos como tal, surgirian problemas, a demás, el hecho de ser primary key, indica que es unico, que es obligatorio y otros constraints implícitos
+            },
+            name: {
+                type: DataTypes.STRING,
+                allowNull: false,
+            },
+            email: {
+                type: Datatypes.STRING,
+                unique: true,
+            },
+            phone: {
+                type: Datatypes.STRING,
+                allowNull: false,
+            },
         },
         { timestamps: false }
     );
 };
 ```
 
-de este modo, cada archivo de la carpeta models, exporta una funcion que recibe la instancia de sequelize, y crea el elemento en la tabla correspondiente, dicha funcion será importada en db.js para ser usada.
+aqui hemos definido la tabla de usuarios y el contenido que debe tener cada usuario segun nuestro criterio, _no es una fórmula fija_, es decir en cada proyecto podremos decidir si permitiremos que dos usuarios compartan el mismo email y en consecuancia le pondremos o no el constraint unique, ó si permitiremos que se deje el campo de email vacío, eso es a discreción del desarrollador y del proyecto.  
+por último en la tabla, le damos la instruccion de timestamps false, ya que por defecto se crea un registro de fecha y hora en la que ha sido creado cada elemento de cada tabla, y por el momento, no deseamos ver tanta información en nuestra base de datos.
+
+Cada archivo de la carpeta models, exporta una funcion que recibe la instancia de sequelize, y crea el elemento en la tabla correspondiente, dicha funcion será importada en db.js para ser usada.
 
 ```js
 const { UserModel } = require('./models/User.js');
@@ -629,19 +622,18 @@ sequelize.models = Object.fromEntries(capsEntries);
 const { User, Model2, Model3 } = sequelize.models;
 ```
 
-### relaciones entre tablas
+#### 3. definir las relaciones enrte los modelos
 
-si tuviese, _por ejemplo_, usuarios y posts:
+si tuviesemos, _por ejemplo_, usuarios y posts:
 
 -   un usuario, puede hacer _varios_ posts.
 -   un post, puede haber sido generado unicamente por _Un_ usuario.  
-    esto implica una relacion de uno a muchos.
+    esto implica una **relacion de uno a muchos**.
 
 para hacer la relacion debo:
 
 1. desestructurar los modelos que voy a relacionar, obteniendolos de sequelize.models.
 2. relacionarlos.
-    > en la version en la que importamos manualmente los modelos:
 
 ```js
 const { User, Post } = sequelize.models;
@@ -655,13 +647,12 @@ si tuviese, _por ejemplo_, videojuegos y géneros:
 
 -   un videojuego, puede pertenecer a _varios_ generos.
 -   un género, puede agrupar _varios_ videojuegos.  
-    esto implica una relacion de muchos a muchos.
+    esto implica una **relacion de muchos a muchos**.
 
 para hacer la relacion debo:
 
 1. desestructurar los modelos que voy a relacionar, obteniendolos de sequelize.models.
 2. relacionarlos.
-    > en la version en la que importamos automaticamente los modelos:
 
 ```js
 const { Videogame, Genre } = sequelize.models;
@@ -918,7 +909,7 @@ module.exports = getUsersByName;
 
 estos han sido ejemplos de handlers de un elemento de tipo hasMany. hagamos algun ejemplo de posts, ya que es de tipo belongsTo y tiene metodos de seuelize diferentes a demas de contar con clave foránea
 
-** clave foránea **  
+**clave foránea**  
 los posts en nuestro ejemplo tienen una clave foranea debido a que estan relacionados necesariamente con un usuario, entonces en la tabla de la base de datos, se creará la columna userId de forma automática gracias a sequelize sin necesidad de que en nuestro modelo Post esté definida dicha columna, este user id representa el usuario al cual esta relacionado cada post
 
 ```js
