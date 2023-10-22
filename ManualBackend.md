@@ -4,7 +4,7 @@ guia con ejemplos para construir una API que consuma desde una api pública de n
 
 ## para iniciar:
 
-> en la carpeta **raiz** de nuestro proyecto backend:  
+> en la carpeta **raiz** de nuestro _proyecto backend_:  
 > **npm i** :
 >
 > > express  
