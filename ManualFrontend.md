@@ -354,6 +354,48 @@ tenemos un componente con funcionalidad y estilos, que SI recibe _datos_ pero a�
 
 Para determinar el origen del cual vendrá el array de usuarios, implementaremos la incorporacion del estado global a manos de Redux (ver implementación de redux).
 
+### Ciclo de vida de un componente
+
+#### en componentes de clase
+
+se trabajan los ciclos de vida con component did mount, component did update y component dismount.
+
+#### en componentes funcionales
+
+se Emulan las funciones de cdm, cdu y cd usando distintas partes del hook useEffect
+
+dentro de nuestro componente, importaremos use effect desde react:
+
+```jsx
+import { useEffect } from "react";
+import { CardsContainer } from "./components";
+
+const Home = () => {
+    //en este primer useEffect podemos ver la aplicacion de funciones que se disparan cuando el componente se monta y cuando se desmonta
+    useEffect(() => {
+        console.log("se ha montado el componente");
+        return () => {
+            console.log("se ha desmontado el componente");
+        };
+    }, []);
+
+    //en este segundo useEffect podemos ver la aplicacion de funciones que se disparan cuando el componente se actualizan, es decir, cuando alguna de las propiedades de su array de dependencias sufre cualquier cambio.
+
+    useEffect(() => {
+        console.log(
+            "se ha actualizado el componente por la modificacion de una dependencia"
+        );
+    }, [dependecia1, dependencia2]);
+
+    return (
+        <div className={style.Home}>
+            <CardsContainer />
+        </div>
+    );
+};
+export default Home;
+```
+
 ## Implementación del estado global con Redux
 
 1. dentro de src, debemos crear una carpeta que podemos llamar 'redux'. y dentro de ella:
@@ -361,7 +403,9 @@ Para determinar el origen del cual vendrá el array de usuarios, implementaremos
 3. creamos el archivo reducer.js
 4. creamos el archivo actions.js
 5. creamos el archivo actionTypes.js
-6. darle el provider de react-redux a nuestro archivo main.jsx de la carpeta src
+6. darle el provider de react-redux a nuestro archivo main.jsx de la carpeta src.
+7. determinar que componentes despacharán actions para modificar el estado global y determinar en que etapa del cilco de vida lo haran. (implementacion de useEffect y useDispatch)
+8. determinar que componentes consumirán el estado global
 
 ### store.js
 
@@ -386,14 +430,19 @@ export default store;
 esta definicion del store de redux, se puede usar _tal y como está en el ejemplo_ para distintos proyectos.
 
 ```js
-import { GET_USERS } from "./actionTypes";
+import { GET_USERS,GET_USER,FILTER_USERS_BY_SOURCE } from "./actionTypes";
 const initialState = {
     users=[],
+    user=[],
 };
 
 const rootReducer=(state=initialState, action)=>{
     switch(action.type){
         case GET_USERS:
+        return { ...state, users:action.payload };
+        case GET_USER:
+        return { ...state, user:action.payload };
+        case FILTER_USERS_BY_SOURCE:
         return { ...state, users:action.payload };
         default: return{ ...state};
     }
@@ -401,9 +450,30 @@ const rootReducer=(state=initialState, action)=>{
 export default rootReducer;
 ```
 
-### actions.js
+### actionTypes.js
+
+los action types son simplemente una forma de lograr que nuestro editor de texto nos avise si hemos escrito mal el nombre de una action, esto se logra gracias a que guardamos el string que representa el nombre de la action, dentro de una variable con un nombre igual, de modo que al ser una variable, el editor de codigo nos avisa si esta mal escria y tambien nos da recomendaciones de autocompletado.  
+las action deben exportarse para ser importadas y usadas en las actions.
 
 ```js
+export const GET_USERS = "GET_USERS";
+export const GET_USER = "GET_USER";
+export const FILTER_USERS_BY_SOURCE = "FILTER_USERS_BY_SOURCE";
+```
+
+### actions.js
+
+Las actions son funciones que devuelven una funcion asincrónica, la cual se encarga de darle la orden al reducer de manipular el estado.  
+la instruccion que recibe el reducer es el dispatch, que contiene el type y opcionalmente el payload.
+
+para ser mas específicos, la funcion externa se llama action creator, y le interna es en si, la action.
+
+todas deben exportarse para ser usadas por el reducer
+
+```js
+
+import { GET_USERS, GET_USER, FILTER_USERS_BY_SOURCE } from "./actiontypes";
+
 export const getUsers=(){
     return async function(dispatch){
     const apiData = await axios.get("endpoint al quiero pedir/users");
@@ -412,19 +482,25 @@ export const getUsers=(){
     };
 };
 
-```
+export const getUser=(id){
+    return async function(dispatch){
+    const apiData = await axios.get(`endpoint al quiero pedir/users/${id}`);
+    const user = apiData.data.length ? apiData.data : {};
+    dispatch ({ type: GET_USER, payload: user });
+    };
+};
 
-### actionTypes.js
+export const filterUserBySrc=(src){
+    dispatch ({ type: FILTER_USERS_BY_SOURCE });
+};
 
-esta definicion de actiontypes
-
-```js
-export const GET_USERS = "GET_USERS";
 ```
 
 ### provider
 
-para proveerle a toda nuestra app de un estado global, anidamos todo en main.jsx dentro de la etiqueta provider de ract-redux, y al provider le damos como _prop_ nuestro store, importado de la carpeta store.
+para proveerle a toda nuestra app de un estado global,en main.jsx  
+anidamos todo dentro de la etiqueta provider de ract-redux,  
+y al provider le damos como _prop_ nuestro store, importado de la carpeta store.
 
 ```jsx
 import React from "react";
@@ -442,3 +518,40 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </Provider>
 );
 ```
+
+### flujo de redux
+
+```jsx
+import { useEffect } from "react";
+import { CardsContainer } from "./components";
+import { useDispatch } from "react-redux":
+import { getUsers } from "../../redux/actions"
+
+const Home = () => {
+    const dispatch = useDispatch();
+    useEffect(() => {
+        dispatch(getUsers());
+    }, [dispatch]);
+// cuando usamos dispatch como una variable que guarda la ejecucion de useDispatch, y usamos esa variable dentro de un useEffect, conviene siempre agregar la variable dispatch al array de dependencias para librarnos de errores en la consola.
+    return (
+        <div className={style.Home}>
+            <CardsContainer />
+        </div>
+    );
+};
+export default Home;
+```
+
+en este ejemplo, podemos ver como después de haber hecho las configuraciones de redux, comienza el flujo de redux
+
+1. **Dispatch**  
+   _el componente dispara el useEffect_  
+    Home se monta, disparando el useEffect. (tambien se puede disparar por ejemplo si sucede algo que modifique una de las dependencias del useEffect o si el componente se desmonta)
+2. **Action**  
+   el action creator, que envía una funcion a modo de instrucción para el reducer.
+3. **thunk**  
+   el middleware intercepta esta instruccion antes de ser recibida por el reducer y , ejecuta la action.
+4. el **reducer**  
+   recibe la instruccion y determina cual es el action type que debe ser ejecutado, _reemplazando_ el estado por uno nuevo, que generalmente es una copia del antiguo estado con alguna modificacion según la action y el payload lo determinen.
+
+en este ejemplo, el componente home, realiza cambios en el estado, pero no lo consume, esperando que sea su componente hijo <CardsContainer/> y cualquier otro componente suscrito al estado global, quienes consuman el contenido del estado global despues de el montaje de home.
